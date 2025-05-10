@@ -8,6 +8,7 @@ import 'package:irl_inventory/common/widgets/list_tiles/settings_menu_tile.dart'
 import 'package:irl_inventory/common/widgets/list_tiles/user_profile_tile.dart';
 import 'package:irl_inventory/common/widgets/texts/section_heading.dart';
 import 'package:irl_inventory/data/repositories/authentication/authentication_repository.dart';
+import 'package:irl_inventory/features/app_update/app_updater.dart';
 import 'package:irl_inventory/features/meme/meme_webview.dart';
 import 'package:irl_inventory/features/personalization/screens/return/return_requests.dart';
 import 'package:irl_inventory/features/personalization/screens/settings/profile/profile.dart';
@@ -97,6 +98,61 @@ class Settings extends StatelessWidget {
     ),
   ); },
                   ),
+                  TSettingMenuTile(
+  icon: Iconsax.directbox_notif,
+  title: 'Check for Updates',
+  subtitle: 'Verify if app update is available',
+  onTap: () async {
+    final appUpdater = Get.find<FirebaseAppUpdater>();
+    try {
+      Get.dialog(
+        const Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
+      );
+      
+      final updateAvailable = await appUpdater.isUpdateAvailable();
+      Get.back(); // Close loading dialog
+      
+      if (updateAvailable) {
+        final latestVersionData = await appUpdater.fetchLatestVersion();
+        appUpdater.showUpdateDialog(
+          context,
+          downloadUrl: latestVersionData['url'],
+          forceUpdate: false,
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Up to Date'),
+            content: const Text('You have the latest version installed.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      Get.back(); // Close loading dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Update Check Failed'),
+          content: Text('Error checking for updates: ${e.toString()}'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  },
+),
                   
                   // logout button
                   const SizedBox(height: TSizes.spaceBtwSections),

@@ -45,10 +45,11 @@ class _HomeScreenState extends State<HomeScreen> {
       if (updateAvailable && mounted) {
         final latestVersionData = await appUpdater.fetchLatestVersion();
         final downloadUrl = latestVersionData['url'];
+        final forceUpdate = latestVersionData['force_update'] ?? false; 
         appUpdater.showUpdateDialog(
           context,
           downloadUrl: downloadUrl,
-          forceUpdate: true, // Set to true if you want to force updates
+          forceUpdate: forceUpdate, // Set to true if you want to force updates
         );
       }
     } catch (e) {
