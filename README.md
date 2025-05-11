@@ -92,16 +92,16 @@ Let’s say a student team is preparing a robot for a **Robowars competition**:
 
 ```markdown
 ### Order Review Page
-![Order Review](./assets/screenshots/order_review.jpeg)
+![Order Review](/assets/screenshots/order_review.jpeg)
 
 ### Pending Request Status
-![Pending Request](./assets/screenshots/pending_requests.jpeg)
+![Pending Request](/assets/screenshots/pending_requests.jpeg)
 
 ### Approved Request Display
-![Approved Request](./assets/screenshots/approved_requests.jpeg)
+![Approved Request](/assets/screenshots/approved_requests.jpeg)
 
 ### Return Management
-![Return Page](./assets/screenshots/return_requests.jpeg)
+![Return Page](/assets/screenshots/return_requests.jpeg)
 
 ### Inventory Browsing
-![Inventory View](./assets/screenshots/home.jpeg)
+![Inventory View](/assets/screenshots/home.jpeg)
