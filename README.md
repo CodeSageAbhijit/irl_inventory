@@ -1,6 +1,6 @@
 # 📦 Inventory Management App (Flutter + Firebase)
 
-A feature-rich **inventory management mobile application** built using **Flutter**, designed to simplify the process of **requesting and returning electronic components**. Ideal for use in labs, maker spaces, and academic projects like **Robowars**, this system ensures efficient resource allocation, accountability, and real-time database updates.
+A feature-rich **IRL Inventory Management** built using **Flutter**, designed to simplify the process of **requesting and returning electronic components**.This system ensures efficient resource allocation, accountability, and real-time database updates.
 
 ---
 
