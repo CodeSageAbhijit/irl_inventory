@@ -1,16 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:irl_inventory/utils/constants/colors.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:irl_inventory/features/app_update/get_device_arch.dart';
+import 'package:irl_inventory/utils/constants/colors.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirebaseAppUpdater {
-  // Firestore instance
   final FirebaseFirestore _firestore;
-
-  // Document path for version info in Firestore
   final String _versionDocPath;
 
   FirebaseAppUpdater({
@@ -19,130 +15,152 @@ class FirebaseAppUpdater {
   })  : _firestore = firestore,
         _versionDocPath = versionDocPath;
 
-  /// Fetches the latest version information from Firestore
   Future<Map<String, dynamic>> fetchLatestVersion() async {
     try {
       final doc = await _firestore.doc(_versionDocPath).get();
       if (doc.exists) {
         return doc.data()!;
-      } else {
-        throw Exception('Version document does not exist in Firestore.');
       }
+      throw Exception('Version document does not exist in Firestore.');
     } catch (e) {
       throw Exception('Error fetching version info: $e');
     }
   }
 
-  /// Custom version comparison function
-  /// Returns true if version1 is greater than version2
   bool isNewerVersion(String version1, String version2) {
-    // print(version1);
-    // print(version2);
-    List<int> v1Parts = version1.split('.').map(int.parse).toList();
-    List<int> v2Parts = version2.split('.').map(int.parse).toList();
+    final v1Parts = version1.split('.').map(int.parse).toList();
+    final v2Parts = version2.split('.').map(int.parse).toList();
 
-    // Ensure both lists have the same length
-    while (v1Parts.length < v2Parts.length) {
-      v1Parts.add(0);
+    for (int i = 0; i < v1Parts.length || i < v2Parts.length; i++) {
+      final v1 = i < v1Parts.length ? v1Parts[i] : 0;
+      final v2 = i < v2Parts.length ? v2Parts[i] : 0;
+      if (v1 > v2) return true;
+      if (v1 < v2) return false;
     }
-    while (v2Parts.length < v1Parts.length) {
-      v2Parts.add(0);
-    }
-
-    // Compare version parts
-    for (int i = 0; i < v1Parts.length; i++) {
-      if (v1Parts[i] > v2Parts[i]) {
-        return true;
-      } else if (v1Parts[i] < v2Parts[i]) {
-        return false;
-      }
-    }
-
-    // If we got here, versions are equal
     return false;
   }
 
-  /// Checks if an update is available by comparing current app version with latest
   Future<bool> isUpdateAvailable() async {
     try {
-      // Get current app version
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
-
-      // Get latest version from Firestore
       final latestVersionData = await fetchLatestVersion();
-      final latestVersion = latestVersionData['version'];
-
-      // Compare versions
-      return isNewerVersion(latestVersion, currentVersion);
+      return isNewerVersion(latestVersionData['version'], currentVersion);
     } catch (e) {
       print('Error checking for updates: $e');
-      // In case of error, assume no update is needed
       return false;
     }
   }
 
-  /// Shows an update dialog with options to update or cancel
-void showUpdateDialog(
-  BuildContext context, {
-  required String downloadUrl,
-  bool forceUpdate = true,
-}) {
-  showDialog(
-    context: context,
-    barrierDismissible: !forceUpdate,
-    builder: (context) => AlertDialog(
-      title: const Text('Update Available'),
-      content: const Text(
-          'A new version of the app is available. Please update to get the latest features and improvements.'),
-      actions: [
-        if (!forceUpdate)
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.grey[600],
-            ),
-            child: const Text('Later'),
-          ),
-        TextButton(
-          onPressed: () async {
-            final url = Uri.parse(downloadUrl);
-            if (await canLaunchUrl(url)) {
-              await launchUrl(
-                url,
-                mode: LaunchMode.externalApplication,
-              );
-            }
-          },
-          style: TextButton.styleFrom(
-            foregroundColor: TColors.primary,
-            textStyle: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          child: const Text('Update Now'),
-        ),
-      ],
-    ),
-  );
-}
+  Future<bool> isUsingOptimalApk() async {
+    try {
+      final versionData = await fetchLatestVersion();
+      
+      // If no architecture-specific builds are available, current build is optimal
+      if (!versionData.containsKey('architectures')) {
+        return true;
+      }
 
-  /// Checks for updates and shows a dialog if an update is available
+      final architecture = await getDeviceArchitecture();
+      final packageInfo = await PackageInfo.fromPlatform();
+      
+      // Check if this is a universal build (contains 'universal' in build number)
+      final isUniversalBuild = packageInfo.buildNumber.contains('universal');
+      
+      // If user has universal build but architecture-specific exists, not optimal
+      return (isUniversalBuild && versionData['architectures'].containsKey(architecture));
+    } catch (e) {
+      print('Error checking optimal APK: $e');
+      return true; // Assume optimal if we can't determine
+    }
+  }
+
+  Future<String> getDownloadUrl() async {
+    final versionData = await fetchLatestVersion();
+    final defaultUrl = versionData['url'] ?? '';
+    
+    if (!versionData.containsKey('architectures')) {
+      return defaultUrl;
+    }
+    
+    try {
+      final architecture = await getDeviceArchitecture();
+      final architectures = versionData['architectures'] as Map<String, dynamic>;
+      
+      // Return architecture-specific URL if available, otherwise default URL
+      return architectures[architecture] ?? defaultUrl;
+    } catch (e) {
+      print('Error getting architecture-specific URL: $e');
+      return defaultUrl;
+    }
+  }
+
+  void showUpdateDialog(
+    BuildContext context, {
+    bool forceUpdate = true,
+    String? customMessage,
+  }) async {
+    final urlToUse = await getDownloadUrl();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: !forceUpdate,
+      builder: (context) => AlertDialog(
+        title: const Text('Update Available'),
+        content: Text(customMessage ?? 
+            'A new version of the app is available. Please update to get the latest features and improvements.'),
+        actions: [
+          if (!forceUpdate)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.grey[600],
+              ),
+              child: const Text('Later'),
+            ),
+          TextButton(
+            onPressed: () async {
+              final url = Uri.parse(urlToUse);
+              if (await canLaunchUrl(url)) {
+                await launchUrl(
+                  url,
+                  mode: LaunchMode.externalApplication,
+                );
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: TColors.primary,
+              textStyle: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            child: const Text('Update Now'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> checkForUpdates(
     BuildContext context, {
     bool showOnlyIfUpdateAvailable = true,
     bool forceUpdate = false,
+    bool checkForOptimalApk = true,
   }) async {
     try {
       final updateAvailable = await isUpdateAvailable();
-
-      if (updateAvailable || !showOnlyIfUpdateAvailable) {
-        final latestVersionData = await fetchLatestVersion();
-        final downloadUrl = latestVersionData['url'];
-
-        // Show the update dialog
+      final usingOptimalApk = checkForOptimalApk ? await isUsingOptimalApk() : true;
+      
+      if (updateAvailable || !usingOptimalApk || !showOnlyIfUpdateAvailable) {
+        String? message;
+        
+        if (!usingOptimalApk) {
+          message = 'A more optimized version for your device is available. '
+                   'Updating will improve performance and reduce app size.';
+        }
+        
         showUpdateDialog(
           context,
-          downloadUrl: downloadUrl,
           forceUpdate: forceUpdate,
+          customMessage: message,
         );
       }
     } catch (e) {
@@ -150,5 +168,3 @@ void showUpdateDialog(
     }
   }
 }
-
-

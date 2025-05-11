@@ -39,23 +39,33 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _checkForUpdates() async {
-    try {
-      final updateAvailable = await appUpdater.isUpdateAvailable();
-      if (updateAvailable && mounted) {
-        final latestVersionData = await appUpdater.fetchLatestVersion();
-        final downloadUrl = latestVersionData['url'];
-        final forceUpdate = latestVersionData['force_update'] ?? false; 
+Future<void> _checkForUpdates() async {
+  try {
+    final updateAvailable = await appUpdater.isUpdateAvailable();
+    final usingOptimalApk = await appUpdater.isUsingOptimalApk();
+    
+    if (updateAvailable || !usingOptimalApk) {
+      final latestVersionData = await appUpdater.fetchLatestVersion();
+      final forceUpdate = latestVersionData['force_update'] ?? false;
+      
+      if (mounted) {
         appUpdater.showUpdateDialog(
           context,
-          downloadUrl: downloadUrl,
-          forceUpdate: forceUpdate, // Set to true if you want to force updates
+          forceUpdate: forceUpdate,
+          customMessage: !usingOptimalApk 
+              ? 'A more optimized version for your device is available. Updating will improve performance.' 
+              : null,
         );
       }
-    } catch (e) {
-      debugPrint('Failed to check for updates: $e');
     }
+  } catch (e) {
+    debugPrint('Failed to check for updates: $e');
+    // Optionally show error to user
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to check for updates')),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

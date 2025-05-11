@@ -36,6 +36,7 @@ FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   
   // Store the updater in GetX for easy access
   Get.put(appUpdater);
+  
 
 
 

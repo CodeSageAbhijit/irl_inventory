@@ -117,7 +117,6 @@ class Settings extends StatelessWidget {
         final latestVersionData = await appUpdater.fetchLatestVersion();
         appUpdater.showUpdateDialog(
           context,
-          downloadUrl: latestVersionData['url'],
           forceUpdate: false,
         );
       } else {
