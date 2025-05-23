@@ -88,7 +88,6 @@ Let’s say a student team is preparing a robot for a **Robowars competition**:
 
 ## 📸 UI Preview (Screenshots)
 
-> *(Place your screenshots inside a `/screenshots` folder in the repo)*
 
 ```markdown
 ### Order Review Page
